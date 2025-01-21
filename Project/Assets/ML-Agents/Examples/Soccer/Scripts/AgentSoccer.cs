@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Unity.MLAgents.Sensors;
 
 
+
 public enum Team
 {
     Blue = 0,
@@ -20,12 +21,10 @@ public class AgentSoccer : Agent
     // * opposing goal
     // * wall
     // * own teammate
-    // * opposing playe
-
-    // Memory-related variables.
+    // * opposing player
+    //
     Queue<List<float>> observationMemory;
     int memorySize = 5; // Number of frames to remember.
-
     RayPerceptionSensorComponent3D raySensor;
 
 
@@ -60,12 +59,10 @@ public class AgentSoccer : Agent
 
     public override void Initialize()
     {
-        
-        
         raySensor = GetComponent<RayPerceptionSensorComponent3D>();
+
         // Initialize the Memory:
         observationMemory = new Queue<List<float>>(memorySize);
-
         SoccerEnvController envController = GetComponentInParent<SoccerEnvController>();
         if (envController != null)
         {
@@ -110,30 +107,6 @@ public class AgentSoccer : Agent
 
         m_ResetParams = Academy.Instance.EnvironmentParameters;
     }
-
-
-    public void StoreObservation(List<float> rayDistances)
-    {
-        // Store the current forward ray observations into memory.
-        if (observationMemory.Count >= memorySize)
-        {
-            observationMemory.Dequeue(); // Remove the oldest memory.
-        }
-        observationMemory.Enqueue(rayDistances); // Store the new observation.
-    }
-
-    public List<float> GetObservationMemory()
-    {
-        // Aggregate observations from previous frames.
-        List<float> combinedMemory = new List<float>();
-        foreach (var obs in observationMemory)
-        {
-            combinedMemory.AddRange(obs);
-        }
-        return combinedMemory;
-    }
-
-
 
     public void MoveAgent(ActionSegment<int> act)
     {
@@ -186,14 +159,15 @@ public class AgentSoccer : Agent
     {
         // Get current forward ray distances.
         List<float> currentRayObservations = GetForwardRayDistances();
-        
+
         // Store the current observations into memory.
         StoreObservation(currentRayObservations);
 
         // Get the combined memory of past observations.
         List<float> memoryData = GetObservationMemory();
 
-        
+        // Debug or process `memoryData` if needed.
+
         // Continue with movement logic.
         MoveAgent(actionBuffers.DiscreteActions);
 
@@ -211,31 +185,32 @@ public class AgentSoccer : Agent
 
     private List<float> GetForwardRayDistances()
     {
-    List<float> distances = new List<float>();
-    float rayLength = 20f; // Your configured ray length.
-    int raysPerDirection = 5; // As configured.
-    float maxRayDegrees = 60f; // As configured.
+        List<float> distances = new List<float>();
+        // Ensure the parameters match the configuration
+        float rayLength = 20f;
+        int raysPerDirection = 5;
+        float maxRayDegrees = 60f;
 
-    float angleStep = maxRayDegrees / raysPerDirection;
-    Vector3 forward = transform.forward;
+        float angleStep = maxRayDegrees / raysPerDirection;
+        Vector3 forward = transform.forward;
 
-    // Cast rays in a 120-degree arc in front of the agent.
-    for (int i = -raysPerDirection; i <= raysPerDirection; i++)
-    {
-        float angle = i * angleStep;
-        Vector3 direction = Quaternion.Euler(0, angle, 0) * forward;
-
-        if (Physics.Raycast(transform.position, direction, out RaycastHit hit, rayLength))
+        // Cast rays in a 120-degree arc in front of the agent.
+        for (int i = -raysPerDirection; i <= raysPerDirection; i++)
         {
-            distances.Add(hit.distance / rayLength); // Normalize the distance.
-        }
-        else
-        {
-            distances.Add(1.0f); // No hit, add max normalized distance.
-        }
-    }
+            float angle = i * angleStep;
+            Vector3 direction = Quaternion.Euler(0, angle, 0) * forward;
 
-    return distances;
+            if (Physics.Raycast(transform.position, direction, out RaycastHit hit, rayLength))
+            {
+                distances.Add(hit.distance / rayLength); // Normalize the distance.
+            }
+            else
+            {
+                distances.Add(1.0f); // No hit, add max normalized distance.
+            }
+        }
+
+        return distances;
     }
 
 
@@ -282,16 +257,42 @@ public class AgentSoccer : Agent
         }
         if (c.gameObject.CompareTag("ball"))
         {
-            AddReward(.2f * m_BallTouch);
+            float rewardForTouch = 0.2f * Mathf.Max(0.1f, m_BallTouch); // Ensure a minimum reward
+            Debug.Log($"Agent {name} touched the ball. Adding reward: {rewardForTouch}");
+            AddReward(rewardForTouch);
+
             var dir = c.contacts[0].point - transform.position;
             dir = dir.normalized;
             c.gameObject.GetComponent<Rigidbody>().AddForce(dir * force);
         }
     }
 
+
     public override void OnEpisodeBegin()
     {
         m_BallTouch = m_ResetParams.GetWithDefault("ball_touch", 0);
     }
+
+    public void StoreObservation(List<float> rayDistances)
+    {
+        // Store the current forward ray observations into memory.
+        if (observationMemory.Count >= memorySize)
+        {
+            observationMemory.Dequeue(); // Remove the oldest memory.
+        }
+        observationMemory.Enqueue(rayDistances); // Store the new observation.
+    }
+
+    public List<float> GetObservationMemory()
+    {
+        // Aggregate observations from previous frames.
+        List<float> combinedMemory = new List<float>();
+        foreach (var obs in observationMemory)
+        {
+            combinedMemory.AddRange(obs);
+        }
+        return combinedMemory;
+    }
+
 
 }
