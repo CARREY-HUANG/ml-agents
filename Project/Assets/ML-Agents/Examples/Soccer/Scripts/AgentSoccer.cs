@@ -267,6 +267,21 @@ public class AgentSoccer : Agent
         }
     }
 
+    public void RewardForGoal(bool isOwnGoal)
+    {
+        if (isOwnGoal)
+        {
+            // Penalty for conceding a goal
+            AddReward(-1.0f);
+        }
+        else
+        {
+            // Reward for scoring a goal
+            AddReward(1.0f);
+        }
+    }
+
+
 
     public override void OnEpisodeBegin()
     {
