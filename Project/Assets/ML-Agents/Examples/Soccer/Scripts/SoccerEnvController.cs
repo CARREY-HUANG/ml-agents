@@ -113,22 +113,7 @@ public class SoccerEnvController : MonoBehaviour
         ResetScene();
 
     }
-    public void OnGoalScored(Team scoringTeam)
-    {
-        foreach (var agent in agents)
-        {
-            var agentSoccer = agent.GetComponent<AgentSoccer>();
-            if (agentSoccer.team == scoringTeam)
-            {
-                agentSoccer.RewardForGoal(false); // Reward for scoring a goal
-            }
-            else
-            {
-                agentSoccer.RewardForGoal(true); // Penalty for conceding a goal
-            }
-        }
-        ResetField(); // Reset the field after a goal is scored
-    }
+
 
 
 
